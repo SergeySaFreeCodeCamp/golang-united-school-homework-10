@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -21,6 +22,11 @@ main function reads host/port from env just for an example, flavor it following 
 func Start(host string, port int) {
 	router := mux.NewRouter()
 
+	router.HandleFunc("/name/{PARAM}", nameHandler).Methods(http.MethodGet)
+	router.HandleFunc("/bad", badHandler).Methods(http.MethodGet)
+	router.HandleFunc("/data", dataHandler).Methods(http.MethodPost)
+	router.HandleFunc("/headers", headersHandler).Methods(http.MethodPost)
+
 	log.Println(fmt.Printf("Starting API server on %s:%d\n", host, port))
 	if err := http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), router); err != nil {
 		log.Fatal(err)
@@ -35,4 +41,48 @@ func main() {
 		port = 8081
 	}
 	Start(host, port)
+}
+
+func nameHandler(w http.ResponseWriter, r *http.Request) {
+	queryParam := mux.Vars(r)["PARAM"]
+	fmt.Fprintf(w, "Hello, %v!", queryParam)
+}
+
+func badHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusInternalServerError)
+}
+
+func dataHandler(w http.ResponseWriter, r *http.Request) {
+	dec := json.NewDecoder(r.Body)
+	var reqBody map[string]interface{}
+	if err := dec.Decode(&reqBody); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Println(err)
+		return
+	}
+	for bodyParam := range reqBody {
+		if bodyParam == "PARAM" {
+			fmt.Fprintf(w, "I got message:\n%v", reqBody[bodyParam])
+			return
+		}
+	}
+	w.WriteHeader(http.StatusBadRequest)
+}
+
+func headersHandler(w http.ResponseWriter, r *http.Request) {
+	a, err := strconv.Atoi(r.Header.Get("a"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Println(err)
+		return
+	}
+
+	b, err := strconv.Atoi(r.Header.Get("b"))
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		log.Println(err)
+		return
+	}
+
+	w.Header().Set("a+b", fmt.Sprint(a+b))
 }
