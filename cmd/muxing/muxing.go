@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -53,20 +53,13 @@ func badHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func dataHandler(w http.ResponseWriter, r *http.Request) {
-	dec := json.NewDecoder(r.Body)
-	var reqBody map[string]interface{}
-	if err := dec.Decode(&reqBody); err != nil {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		log.Println(err)
 		return
 	}
-	for bodyParam := range reqBody {
-		if bodyParam == "PARAM" {
-			fmt.Fprintf(w, "I got message:\n%v", reqBody[bodyParam])
-			return
-		}
-	}
-	w.WriteHeader(http.StatusBadRequest)
+	fmt.Fprintf(w, "I got message:\n%v", string(body))
 }
 
 func headersHandler(w http.ResponseWriter, r *http.Request) {
